@@ -309,9 +309,9 @@ class CoTGeneration:
         
         ## Two-stage retrieval: 
         ## Configurable parameters
-        num_candidates = 10  # Stage 1 粗选数量
-        num_good_examples = 2  # Stage 2 精选的 good 样本数量
-        num_error_examples = 2  # Stage 2 精选的 error 样本数量
+        num_candidates = 10  # Stage 1 rough selection number
+        num_good_examples = 2  # Stage 2 selected good examples number
+        num_error_examples = 2  # Stage 2 selected error examples number
         
         ## Stage 1: Contriver - rough selection (top K) based on cross-modal Q-A similarity
         similarities = cosine_similarity(question_embedding_contriver, self.good_eg_A_embeddings)
@@ -394,9 +394,9 @@ class CoTGeneration:
         
         ## Two-stage retrieval: 
         ## Configurable parameters
-        num_candidates = 10  # Stage 1 粗选数量
-        num_good_examples = 2  # Stage 2 精选的 good 样本数量
-        num_error_examples = 2  # Stage 2 精选的 error 样本数量
+        num_candidates = 10  # Stage 1 rough selection number
+        num_good_examples = 2  # Stage 2 selected good examples number
+        num_error_examples = 2  # Stage 2 selected error examples number
         
         ## Stage 1: Contriver - rough selection (top K) based on cross-modal Q-A similarity
         similarities = cosine_similarity(question_embedding_contriver, self.good_eg_A_embeddings)

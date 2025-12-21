@@ -425,28 +425,28 @@ class CoTAssessment:
         total_score = 0
         valid_count = 0
         
-        # 系统提示词
+        # system prompt
         system_prompt = "Answer the given question step by step. And put the final answer after '####' in the end.\n"
         
-        # 遍历每一个 few-shot 样本作为 Target
+        # iterate over each few-shot sample as Target
         for i, (target_q, target_a) in enumerate(few_shots):
-            # 构造 Baseline Prompt (No Replace)
+            # construct Baseline Prompt (No Replace)
             context_str = system_prompt
             for j, (q, a) in enumerate(few_shots):
-                if i == j: continue  # 跳过当前作为 Target 的样本
+                if i == j: continue  # skip the current sample as Target
                 context_str += f"Q: {q}\nA: {a}\n\n"
             
             baseline_prompt = f"{context_str}Q: {target_q}\nA:"
             
-            # 构造 Referi Prompt (Replace)
+            # construct Referi Prompt (Replace)
             referi_prompt = f"{context_str}Q: {question}\nA: {model_output}\n\nQ: {target_q}\nA:"
             
-            # 计算 Loss
+            # calculate Loss
             try:
                 loss_baseline = self._calc_loss(baseline_prompt, target_a)
                 loss_referi = self._calc_loss(referi_prompt, target_a)
                 
-                # Score > 0 意味着加上 model_output 后，target_a 的 loss 降低了（确信度提升）
+                # Score > 0 means that adding model_output reduces the loss of target_a (confidence提升)
                 score = loss_baseline - loss_referi
                 
                 total_score += score
@@ -456,7 +456,7 @@ class CoTAssessment:
                 print(f"Error calculating score for shot {i}: {e}")
                 continue
 
-        # 返回平均分
+        # return average score
         if valid_count == 0:
             return -999.0
             
@@ -465,11 +465,11 @@ class CoTAssessment:
     async def CoT_WP_assessment(self, data):
         """
         CoT-WP (Chain-of-Thought with Wrong Prediction) assessment.
-        基于生成时的 Top-1 和 Top-2 token 概率差值来判断置信度。
+        Based on the difference between the Top-1 and Top-2 token probabilities during generation to determine confidence.
         """
-        # 检查是否有 logprobs 数据
+        # check if there is logprobs data
         if 'logprobs' not in data or data['logprobs'] is None:
-            # 如果没有 logprobs，触发重新生成以获取 logprobs
+            # if there is no logprobs, trigger regeneration to get logprobs
             logprobs = await self._regenerate_with_logprobs(data)
             if logprobs is None or not logprobs:
                 return "incorrect"
@@ -478,50 +478,50 @@ class CoTAssessment:
             if not logprobs:
                 return "incorrect"
         
-        # 获取生成的文本（如果有的话，用于定位 "####"）
+        # get the generated text (if any, for locating "####")
         generated_text = data.get("CoT", None)
         
-        # 计算 CoT-WP 分数（只评估 "####" 之后的部分）
+        # calculate CoT-WP score (only evaluate the part after "####")
         score = self._calculate_cot_wp_score(logprobs, generated_text)
         
-        # 根据阈值判断对错
-        # 阈值需要根据实际情况调整，通常 score 越高表示置信度越高
-        threshold = 0.1  # 可调整的阈值
+        # determine correct or incorrect based on the threshold
+        # the threshold needs to be adjusted based on实际情况，通常 score 越高表示置信度越高
+        threshold = 0.1  # adjustable threshold
         assessment = "correct" if score > threshold else "incorrect"
         return assessment
     
     async def _regenerate_with_logprobs(self, data):
         """
-        重新生成 CoT 并获取 logprobs 数据。
+        Regenerate CoT and get logprobs data.
         
         Returns:
-            list: logprobs 列表，格式为 [{'token': '...', 'logprob': -0.1, 'top_logprobs': {...}}, ...]
-                  如果生成失败或 API 不支持，返回 None
+            list: logprobs list, format as [{'token': '...', 'logprob': -0.1, 'top_logprobs': {...}}, ...]
+                  if generation fails or API is not supported, return None
         """
         config = DATASET_CONFIG.get(self.dataset_name)
         if not config:
             return None
         
-        # 构建 prompt（使用 zero-shot 模板）
+        # construct prompt (using zero-shot template)
         question = data[config["question_field"]]
         prompt = prompts.render_template(config.get("zero_shot_template"), question=question)
         
-        # 调用 API 并获取 logprobs
+        # call API and get logprobs
         try:
-            # 检查 API 类型
+            # check API type
             if isinstance(self.api, models.OpenAIAPI):
-                # OpenAI API 支持 logprobs
+                # OpenAI API supports logprobs
                 response = await self.api.client.chat.completions.create(
                     model=self.api.model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=self.temperature,
                     top_p=self.top_p,
                     max_tokens=self.max_tokens,
-                    logprobs=True,  # 启用 logprobs
-                    top_logprobs=5,  # 返回 top 5 的 logprobs
+                        logprobs=True,  # enable logprobs
+                    top_logprobs=5,  # return top 5 logprobs
                 )
                 
-                # 提取 logprobs
+                # extract logprobs
                 if response.choices and response.choices[0].logprobs:
                     logprobs = []
                     for content_token in response.choices[0].logprobs.content:
@@ -533,8 +533,8 @@ class CoTAssessment:
                         logprobs.append(token_data)
                     return logprobs
             elif isinstance(self.api, models.VLLMAPI):
-                # vLLM API 也支持 logprobs
-                # 使用 backoff 重试机制处理连接错误
+                # vLLM API also supports logprobs
+                # use backoff retry mechanism to handle connection errors
                 import backoff
                 import openai
                 
@@ -565,10 +565,10 @@ class CoTAssessment:
                             logprobs.append(token_data)
                         return logprobs
                 except Exception as e:
-                    # 静默处理错误，不打印警告（因为已经在重试中处理了）
+                    # silently handle errors, do not print warnings (because they are already handled in the retry)
                     return None
             else:
-                # 对于其他 API 类型，尝试通用方式
+                # for other API types, try generic approach
                 if hasattr(self.api, 'client'):
                     try:
                         response = await self.api.client.chat.completions.create(
@@ -592,38 +592,38 @@ class CoTAssessment:
                                 logprobs.append(token_data)
                             return logprobs
                     except Exception as e:
-                        # 静默处理，不打印警告
+                        # silently handle errors, do not print warnings
                         return None
         except Exception as e:
-            # 只在最终失败时打印错误
+            # only print errors when final failure occurs
             return None
         
         return None
     
     def _calculate_cot_wp_score(self, logprobs, generated_text=None):
         """
-        计算 CoT-WP 分数：基于 Top-1 和 Top-2 token 概率的平均差值。
-        只评估 "####" 之后的部分（答案部分）。
+        Calculate CoT-WP score: based on the average difference between the Top-1 and Top-2 token probabilities.
+        Only evaluate the part after "####" (answer part).
         
         Args:
             logprobs: list of dicts, each dict contains 'top_logprobs' for a token.
                      Format: [{'token': '2', 'logprob': -0.1, 'top_logprobs': {'2': -0.1, '3': -2.5, ...}}, ...]
-            generated_text: 可选，生成的完整文本，用于定位 "####" 的位置
+            generated_text: optional, the complete generated text, for locating the position of "####"
         
         Returns:
-            float: 平均概率差值，值越大表示置信度越高
+            float: average probability difference, the higher the value, the higher the confidence
         """
         if not logprobs:
             return 0.0
         
-        # 找到 "####" 之后的部分
+        # find the part after "####"
         answer_start_idx = self._find_answer_start_index(logprobs, generated_text)
         
-        # 只使用 "####" 之后的 logprobs
+        # only use logprobs after "####"
         if answer_start_idx is not None and answer_start_idx < len(logprobs):
             target_tokens = logprobs[answer_start_idx:]
         else:
-            # 如果没有找到 "####"，直接返回 0.0（会被判定为 incorrect）
+            # if "####" is not found, return 0.0 (will be judged as incorrect)
             return 0.0
         
         if not target_tokens:
@@ -632,8 +632,8 @@ class CoTAssessment:
         diffs = []
         
         for token_data in target_tokens:
-            # 获取 Top-2 的 logprobs
-            # OpenAI API 返回的是 logprob，需要 exp 转回概率
+            # get logprobs of Top-2
+            # OpenAI API returns logprob, need to convert back to probability using exp
             if 'top_logprobs' not in token_data or not token_data['top_logprobs']:
                 continue
                 
@@ -647,52 +647,52 @@ class CoTAssessment:
         if not diffs:
             return 0.0
         
-        # 计算平均差值作为最终分数
+        # calculate average difference as the final score
         return np.mean(diffs)
     
     def _find_answer_start_index(self, logprobs, generated_text=None):
         """
-        找到 "####" 之后第一个 token 的索引。
+        Find the index of the first token after "####".
         
         Args:
-            logprobs: token logprobs 列表
-            generated_text: 可选，生成的完整文本
+            logprobs: list of token logprobs
+            generated_text: optional, the complete generated text
         
         Returns:
-            int: "####" 之后第一个 token 的索引，如果没找到返回 None
+        int: index of the first token after "####", if not found, return None
         """
-        # 方法1: 如果有生成的文本，直接在文本中查找
+        # method 1: if there is generated text, search in the text directly
         if generated_text and "####" in generated_text:
-            # 找到 "####" 在文本中的位置
+            # find the position of "####" in the text
             hash_pos = generated_text.find("####")
             if hash_pos != -1:
-                # 计算 "####" 之后的字符数
+                # calculate the number of characters after "####"
                 text_after_hash = generated_text[hash_pos + 4:].lstrip()
-                # 需要找到对应的 token 位置
-                # 由于 token 和字符的对应关系复杂，我们使用近似方法
-                # 通过重建 token 序列来定位
+                # need to find the corresponding token position
+                # since the correspondence between token and character is complex, we use an approximate method
+                # reconstruct the token sequence to locate
                 return self._find_token_index_by_text(logprobs, text_after_hash[:20] if text_after_hash else "")
         
-        # 方法2: 直接在 token 序列中查找 "####"
-        # "####" 可能被 tokenize 为单个 token 或多个 token
-        # 尝试匹配不同的可能 tokenization 方式
+        # method 2: directly search "####" in the token sequence
+        # "####" may be tokenized into a single token or multiple tokens
+        # try to match different possible tokenization methods
         hash_patterns = [
-            ["####"],  # 单个 token
-            ["#", "#", "#", "#"],  # 四个单独的 #
-            ["##", "##"],  # 两个 ##
-            ["###", "#"],  # ### 和 #
+            ["####"],  # single token
+            ["#", "#", "#", "#"],  # four separate #
+            ["##", "##"],  # two ##
+            ["###", "#"],  # ### and #
         ]
         
         for i in range(len(logprobs)):
             for pattern in hash_patterns:
                 if i + len(pattern) <= len(logprobs):
                     tokens = [logprobs[j].get('token', '') for j in range(i, i + len(pattern))]
-                    # 检查是否匹配（考虑 token 可能包含空格等）
+                    # check if it matches (considering that token may contain spaces etc.)
                     tokens_clean = [t.replace('Ġ', ' ').replace('▁', ' ') for t in tokens]
                     if ''.join(tokens_clean).replace(' ', '') == '####':
-                        # 找到 "####" 之后的位置（跳过可能的空格）
+                        # find the position after "####" (skip possible spaces)
                         next_idx = i + len(pattern)
-                        # 跳过可能的空格 token
+                        # skip possible space tokens
                         while next_idx < len(logprobs) and logprobs[next_idx].get('token', '').strip() in ['', ' ', '\n']:
                             next_idx += 1
                         return next_idx
@@ -701,27 +701,27 @@ class CoTAssessment:
     
     def _find_token_index_by_text(self, logprobs, search_text):
         """
-        通过文本片段找到对应的 token 索引（近似方法）。
+        Find the corresponding token index by the text fragment (approximate method).
         
         Args:
-            logprobs: token logprobs 列表
-            search_text: 要搜索的文本片段
+            logprobs: list of token logprobs
+            search_text: text fragment to search
         
         Returns:
-            int: 匹配的 token 索引，如果没找到返回 None
+            int: index of the matched token, if not found, return None
         """
         if not search_text:
             return None
         
-        # 重建 token 序列的文本
+        # reconstruct the text of the token sequence
         reconstructed = ""
         for i, token_data in enumerate(logprobs):
             token = token_data.get('token', '')
-            # 处理 tokenizer 的特殊字符
+            # handle special characters of the tokenizer
             token_clean = token.replace('Ġ', ' ').replace('▁', ' ')
             reconstructed += token_clean
             
-            # 检查是否包含搜索文本
+            # check if it contains the search text
             if search_text in reconstructed:
                 return i
         

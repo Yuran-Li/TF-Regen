@@ -2,35 +2,35 @@ from sympy import symbols, simplify, Rational
 import re
 
 def parse_latex_vector(latex_str):
-    # 去除左括号和右括号以及反斜杠
+    # delete left and right parentheses
     clean_str = latex_str.replace("\\left(", "").replace("\\right)", "")
     
-    # 替换LaTeX的\frac{}{}为可以计算的形式
+    # replace LaTeX \frac{}{} with a computable form
     frac_pattern = r'\\frac\{(\d+)\}\{(\d+)\}'
     clean_str = re.sub(frac_pattern, r'\1/\2', clean_str)
     
-    # 分割字符串得到各个元素
+    # split the string into individual elements
     elements = clean_str.split(',')
     
-    # 解析每个元素
+    # parse each element
     parsed_elements = []
     for el in elements:
-        el = el.strip()  # 移除可能的额外空格
+        el = el.strip()  # remove possible extra whitespace
         try:
-            # 检查是否为整数或小数
+            # check whether it is an integer or a decimal
             num = float(el)
         except ValueError:
-            # 如果不是，则尝试作为Rational对象解析
+            # if not, try parsing it as a Rational object
             num = Rational(el).evalf()
         parsed_elements.append(num)
     
     return tuple(parsed_elements)
 
 def strip_string(string):
-    # linebreaks
+    # delete linebreaks
     string = string.replace('\n', '')
 
-    # remove inverse spaces
+    # remove inverted spaces
     string = string.replace('\\!', '')
 
     # replace \\ with \
@@ -161,24 +161,24 @@ def check_answer_math(prediction: str, label: str) -> bool:
     """ 
     cot_answer = extract_answer(prediction)
     
-    # 如果无法提取答案，直接返回False
+    # if cannot extract answer, return False directly
     if not cot_answer:
         return False
     
-    # 直接字符串比较
+    # direct string comparison
     if str(cot_answer) == str(label):
         return True
     
-    # 标准化数字比较
+    # normalized numeric comparison
     if str(normalize_number(cot_answer)) == str(normalize_number(label)):
         return True
     
-    # 向量比较
+    # vector comparison
     try:
         import ast
         label_tuple = parse_latex_vector(label)
-        pred_tuple = ast.literal_eval(cot_answer)  # 使用更安全的ast.literal_eval
-        # 如果label_tuple是单元素元组，提取第一个元素进行比较
+        pred_tuple = ast.literal_eval(cot_answer)  # use safer ast.literal_eval
+        # if label_tuple is a single-element tuple, compare using its only element
         if len(label_tuple) == 1:
             if label_tuple[0] == pred_tuple:
                 return True
@@ -187,10 +187,10 @@ def check_answer_math(prediction: str, label: str) -> bool:
     except (ValueError, SyntaxError, TypeError):
         pass
     
-    # 符号表达式比较
+    # symbolic expression comparison
     try:
         if 'x' in label and 'x' in cot_answer:
-            # 处理包含变量的表达式
+            # handle expressions containing variables
             label_processed = label.replace('x', '*x').replace(' ', '')
             cot_answer_processed = cot_answer.replace('x', '*x').replace(' ', '')
             if simplify(label_processed) == simplify(cot_answer_processed):
@@ -200,25 +200,25 @@ def check_answer_math(prediction: str, label: str) -> bool:
     except (ValueError, TypeError, AttributeError):
         pass
     
-    # 数值比较
+    # numeric comparison
     try:
         if float(label) == float(cot_answer):
             return True
     except (ValueError, TypeError):
         pass
 
-    # 确定答案类型
+    # determine answer type
     if label.isdigit():
         answer_type = 'digit'
     elif label.isupper() and label.isalpha():
         answer_type = 'option'
     elif label.lower() in ['yes','no']:
         answer_type = 'yesorno'
-        label_normalized = label.lower()  # 不修改原始label
+        label_normalized = label.lower()  # do not modify the original label
     else:
         answer_type = 'formula'
 
-    # 根据类型处理预测答案
+    # post-process predicted answer by type
     if answer_type == 'option':
         cot_answer = cot_answer.strip()[0]
     elif answer_type == 'yesorno':
@@ -226,7 +226,7 @@ def check_answer_math(prediction: str, label: str) -> bool:
     elif answer_type == 'formula':
         cot_answer = cot_answer.replace('$','')
     
-    # 使用is_equiv进行最终比较
+    # final comparison using is_equiv
     if answer_type == 'yesorno':
         return is_equiv(label_normalized, cot_answer)
     else:

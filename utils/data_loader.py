@@ -5,12 +5,12 @@ import os
 import numpy as np
 
 def set_data_loader_seed(seed=42):
-    """设置数据加载器的随机种子"""
+    """set the random seed of the data loader"""
     random.seed(seed)
     np.random.seed(seed)
 
 def load_data(dataset_name, split, seed=42):
-    # 设置随机种子
+    # set the random seed
     set_data_loader_seed(seed)
     
     # Set offline mode to avoid network requests when cache exists
@@ -30,7 +30,7 @@ def load_data(dataset_name, split, seed=42):
                 print(f"Error loading dataset in offline mode: {e}")
                 raise
             else:
-                # If cache doesn't exist, try downloading
+                # if cache doesn't exist, try downloading
                 if split == "train":
                     dataset = load_dataset("gsm8k", "main", split="train")
                 elif split == "test":
