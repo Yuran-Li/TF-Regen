@@ -1,6 +1,6 @@
-# TF-Regen
+# code-release
 
-Code for **"Rethinking Verification–and-Rectification in LLM: A Training-Free Regeneration Paradigm via Contrastive Reflection Memory"**.
+Code for submission.
 
 ## Setup
 
