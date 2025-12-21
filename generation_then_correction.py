@@ -88,9 +88,8 @@ async def generate_CoT_follow_contrastive(model_name, model_type, dataset_name, 
             pbar.set_postfix({"batch": f"{batch_idx}/{total_batches}"})
     
     # prepare results in the required format
-    # 仅对被处理（correct）的样本更新 CoT，其余数据原样保留
     for k, idx in enumerate(correct_indices):
-        all_data[idx]["CoT"] = cots[k] + [all_data[idx]["CoT"]]  # 用列表拼接
+        all_data[idx]["CoT"] = cots[k] + [all_data[idx]["CoT"]]  
     results = all_data
     
     # create output directory if it doesn't exist
@@ -322,7 +321,6 @@ async def main_iteration_async(args):
 
 def evaluate_error_detection(data, check_func, method_name):
     config = DATASET_CONFIG[args.dataset_name]
-    """评估错误检测的准确率"""
     def _normalize_assessment(assess_text):
         if not isinstance(assess_text, str):
             return ""
@@ -332,19 +330,18 @@ def evaluate_error_detection(data, check_func, method_name):
     data_incorrect = [item for item in data if _normalize_assessment(item.get("assessment", "")) == "incorrect"]
     data_correct = [item for item in data if _normalize_assessment(item.get("assessment", "")) == "correct"]
     
-    # 获取CoT结果，兼容列表和单个元素两种情况
     def get_cot_result(item):
         cot = item["CoT"]
         return cot[-1] if isinstance(cot, list) else cot
     
-    TP = len([item for item in data_incorrect if not check_func(get_cot_result(item), item[config['answer_field']])]) ## 准确检测到错误的样本数
+    TP = len([item for item in data_incorrect if not check_func(get_cot_result(item), item[config['answer_field']])])
     FP = len([item for item in data_incorrect if check_func(get_cot_result(item), item[config['answer_field']])])
     TN = len([item for item in data_correct if check_func(get_cot_result(item), item[config['answer_field']])])
     FN = len([item for item in data_correct if not check_func(get_cot_result(item), item[config['answer_field']])])
     
     accuracy = (TP + TN) / (TP + TN + FP + FN) if (TP + TN + FP + FN) > 0 else 0
-    precision = TP / (TP + FP) if (TP + FP) > 0 else 0 ## 不误检
-    recall = TP / (TP + FN) if (TP + FN) > 0 else 0 ##不漏检
+    precision = TP / (TP + FP) if (TP + FP) > 0 else 0 
+    recall = TP / (TP + FN) if (TP + FN) > 0 else 0 
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
     
     print(f"\n{'='*50}")
@@ -359,9 +356,7 @@ def evaluate_error_detection(data, check_func, method_name):
     return accuracy, precision, recall, f1
 
 async def evl_error_detection_acc_async(args):
-    """评估错误检测准确率"""
     check_func = DATASET_CONFIG[args.dataset_name]["check_func"]
-    ### 评估 contrastive_guided ###
     temperature = 0
     top_p = 1
     generation_path = f"output/{args.model_name}_{args.model_type}_{args.dataset_name}_{args.split}_CoT_generation(zero_shot).json"
@@ -376,7 +371,7 @@ async def evl_error_detection_acc_async(args):
     data = json.load(open(assess_path, "r", encoding="utf-8"))
     evaluate_error_detection(data, check_func, assess_method)
 
-    ### 评估 entropy_based ###
+    ### evaluate entropy_based ###
     temperature = 0.3
     top_p = 0.7
     # await generate_CoT(args.model_name, args.model_type, args.dataset_name, args.split, "zero_shot", args.eg_path, 
@@ -390,7 +385,7 @@ async def evl_error_detection_acc_async(args):
     # data = json.load(open(assess_path, "r", encoding="utf-8"))
     # evaluate_error_detection(data, check_func, "entropy_based")
     
-    ### 评估 2 stage ###
+    ### evaluate 2 stage ###
     # generation_path = f"output/{args.model_name}_{args.model_type}_{args.dataset_name}_{args.split}_CoT_generation(zero_shot).json"
     
     # assess_method = "contrastive_guided"
