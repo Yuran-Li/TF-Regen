@@ -8,7 +8,6 @@ EG_PATH="./output/gpt-5-mini-2025-08-07_legal_improved_eg.json"
 SEED=42
 
 export LOCAL_BACKEND=vllm
-# 如你的服务不是默认：http://localhost:8000/v1，请设置：
 export VLLM_BASE_URL="http://127.0.0.1:8001/v1"
 
 # ##zero-shot
