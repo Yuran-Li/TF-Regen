@@ -1,0 +1,29 @@
+name: TF-Regen
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - git
+  - pip:
+      # Core
+      - openai==1.108.1
+      - transformers==4.56.2
+      - datasets==2.21.0
+      - accelerate==0.34.2
+      - sentence-transformers==2.7.0
+      - scikit-learn==1.7.2
+      - numpy==2.2.6
+      - pandas==2.3.2
+      - tqdm==4.67.1
+
+      # Local inference (GPU) - optional but commonly needed
+      - torch==2.8.0
+      - torchvision==0.23.0
+      - torchaudio==2.8.0
+      - vllm==0.10.2
+      - xformers==0.0.32.post1
+
+      # Utilities
+      - pyyaml==6.0.2
+      - requests==2.32.5
