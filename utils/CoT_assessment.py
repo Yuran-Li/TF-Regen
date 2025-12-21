@@ -147,7 +147,7 @@ class CoTAssessment:
     ## assess response in multiple runs
     def entropy_based_assessment(self, data):
         predictions = data["CoT"]
-        # 仅当为列表且包含至少两条 CoT 才计算熵；否则视为已评估
+        # calculate entropy, only when two or more CoT included
         if not isinstance(predictions, list) or len(predictions) <= 1:
             return "already assessed"
         statistics = {}
@@ -204,9 +204,9 @@ class CoTAssessment:
         
         ## Two-stage retrieval: 
         ## Configurable parameters
-        num_candidates = 10  # Stage 1 粗选数量
-        num_good_examples = 1  # Stage 2 精选的 good 样本数量
-        num_error_examples = 1  # Stage 2 精选的 error 样本数量
+        num_candidates = 10  # Stage 1 
+        num_good_examples = 1  # Stage 2 
+        num_error_examples = 1  # Stage 2 
         
         ## Stage 1: Contriver - rough selection (top K) based on cross-modal Q-A similarity
         # similarities = cosine_similarity(question_embedding_contriver, self.good_eg_A_embeddings)
@@ -296,7 +296,7 @@ class CoTAssessment:
         return assessment
     
     def _load_referi_model(self):
-        """加载本地模型用于 Referi 评分计算"""
+        """ Referi """
         model_path = self._resolve_model_path(self.model_name)
         self.referi_tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.referi_model = AutoModelForCausalLM.from_pretrained(
@@ -306,35 +306,28 @@ class CoTAssessment:
         ).eval()
     
     def _resolve_model_path(self, model_name_or_path):
-        """解析模型路径：将短名称转换为完整的 HuggingFace 路径"""
-        # 检查是否是本地路径
+        """ HuggingFace """
         if os.path.exists(model_name_or_path) and os.path.isdir(model_name_or_path):
             return model_name_or_path
         
-        # 模型名称映射表
         model_mapping = {
             "Llama-3.1-8B-Instruct": "meta-llama/Llama-3.1-8B-Instruct",
             "Llama-3.1-70B-Instruct": "meta-llama/Llama-3.1-70B-Instruct",
             "Llama-3.3-70B-Instruct": "meta-llama/Llama-3.3-70B-Instruct",
         }
         
-        # 如果找到映射，返回完整路径
         if model_name_or_path in model_mapping:
             return model_mapping[model_name_or_path]
         
-        # 如果已经是完整路径（包含 /），直接返回
         if "/" in model_name_or_path:
             return model_name_or_path
         
-        # 默认尝试添加 meta-llama/ 前缀
         return f"meta-llama/{model_name_or_path}"
     
     def _calc_loss(self, prompt, target_answer):
-        """计算 target_answer 在 prompt 下的 CrossEntropy Loss"""
         input_text = prompt + target_answer
         inputs = self.referi_tokenizer(input_text, return_tensors="pt")
         
-        # 将 inputs 移动到模型所在的设备
         if hasattr(self.referi_model, 'device'):
             device = self.referi_model.device
         elif hasattr(self.referi_model, 'hf_device_map'):
@@ -344,7 +337,6 @@ class CoTAssessment:
         
         inputs = {k: v.to(device) for k, v in inputs.items()}
         
-        # 构造 labels: mask 掉 prompt 部分，只计算 answer 的 loss
         labels = inputs['input_ids'].clone()
         prompt_len = len(self.referi_tokenizer(prompt, return_tensors="pt")['input_ids'][0])
         labels[:, :prompt_len] = -100  # Ignore prompt
@@ -374,9 +366,9 @@ class CoTAssessment:
         
         ## Two-stage retrieval: 
         ## Configurable parameters
-        num_candidates = 10  # Stage 1 粗选数量
-        num_good_examples = 1  # Stage 2 精选的 good 样本数量
-        num_error_examples = 1  # Stage 2 精选的 error 样本数量
+        num_candidates = 10  # Stage 1 
+        num_good_examples = 1  # Stage 2
+        num_error_examples = 1  # Stage 2
         
         ## Stage 1: Contriver - rough selection (top K) based on cross-modal Q-A similarity
         # similarities = cosine_similarity(question_embedding_contriver, self.good_eg_A_embeddings)
@@ -403,7 +395,6 @@ class CoTAssessment:
         if not config:
             raise ValueError(f"Unsupported dataset: {self.dataset_name}")
 
-        # 将 examples_list 转换为 few_shots 格式 (question, answer) 对
         few_shots = []
         for item in examples_list:
             question = item[config['question_field']]
@@ -411,17 +402,15 @@ class CoTAssessment:
             few_shots.append((question, answer))
         
         if not few_shots:
-            return "incorrect"  # 如果没有有效的 few_shots，返回 incorrect
-        
-        # 获取当前问题的 question 和 model_output
+            return "incorrect"  
+
         question = data[config["question_field"]]
         model_output = data["CoT"]
         
-        # 计算 Referi Score
+        # Referi Score
         score = self._score_single_output(question, model_output, few_shots, config)
         
-        # 根据阈值判断对错
-        threshold = 0.0  # 如果 score > 0 (即降低了 Loss)，认为有帮助，判为 Correct
+        threshold = 0.0  # if score > 0 (mean reduce Loss), Correct
         assessment = "correct" if score > threshold else "incorrect"
         return assessment
     
