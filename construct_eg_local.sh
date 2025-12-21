@@ -9,7 +9,7 @@ DATASET_NAME="legal"
 NUM_SAMPLES=200
 
 export LOCAL_BACKEND=vllm
-# 如你的服务不是默认：http://localhost:8000/v1，请设置：
+# if your server is not default as：http://localhost:8000/v1，please setup：
 export VLLM_BASE_URL="http://127.0.0.1:8001/v1"
 
 ## construct eg
