@@ -63,7 +63,7 @@ bash construct_eg_local.sh
 
 ## Inference
 
-### Direct Performance Boost
+### RM-Primed Prompting
 ```
 bash generate_answer.sh
 #or (local vLLM)
