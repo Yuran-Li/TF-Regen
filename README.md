@@ -45,22 +45,6 @@ python -m vllm.entrypoints.openai.api_server \
 bash construct_eg_local.sh
 ```
 
-## Inputs / Output
-
-### Reflection memory
-- `construct_eg*.sh` will generate：
-  - `output/{student_model}_{student_type}_{dataset}_{split}_answer_generation(error_pattern).json`
-  - `output/{teacher_model}_{teacher_type}_{dataset}_{split}_quality_assessment.json`
-- `improve.py` / `improve_contrastive_example.sh` will generate（as `EG_PATH`）：
-  - `output/{model_name}_{dataset_name}_improved_eg.json`
-
-### Inference / Regeneration
-- `generation.py` generate：
-  - `output/{model_name}_{model_type}_{dataset}_{split}_CoT_generation({method}).json`
-- `generation_then_correction.py`（verify + rectify）generate：
-  - `output/{model_name}_{model_type}_{dataset}_{split}_CoT_assessment({method}).json`
-  - `output/{model_name}_{model_type}_{dataset}_{split}_CoT_rectify({method})_noise{rate}.json`
-
 ## Inference
 
 ### RM-Primed Prompting
@@ -79,3 +63,19 @@ bash generate_then_rectify_answer_local.sh
 
 ```
 
+
+## Inputs / Output
+
+### Reflection memory
+- `construct_eg*.sh` will generate：
+  - `output/{student_model}_{student_type}_{dataset}_{split}_answer_generation(error_pattern).json`
+  - `output/{teacher_model}_{teacher_type}_{dataset}_{split}_quality_assessment.json`
+- `improve.py` / `improve_contrastive_example.sh` will generate（as `EG_PATH`）：
+  - `output/{model_name}_{dataset_name}_improved_eg.json`
+
+### Inference / Regeneration
+- `generation.py` generate：
+  - `output/{model_name}_{model_type}_{dataset}_{split}_CoT_generation({method}).json`
+- `generation_then_correction.py`（verify + rectify）generate：
+  - `output/{model_name}_{model_type}_{dataset}_{split}_CoT_assessment({method}).json`
+  - `output/{model_name}_{model_type}_{dataset}_{split}_CoT_rectify({method})_noise{rate}.json`
